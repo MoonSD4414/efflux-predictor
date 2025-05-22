@@ -1,8 +1,9 @@
 import numpy as np
 
-def extract_features(sequence):
-    # AAC 萃取簡例
+def extract_aac_features(sequence):
+    """計算 Amino Acid Composition (AAC) 特徵，共 20 維"""
+    sequence = sequence.upper()
     amino_acids = 'ACDEFGHIKLMNPQRSTVWY'
-    seq = sequence.upper()
-    features = [seq.count(aa)/len(seq) for aa in amino_acids]
+    total = len(sequence)
+    features = [sequence.count(aa) / total for aa in amino_acids]
     return np.array(features)
