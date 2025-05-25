@@ -1,50 +1,33 @@
 import streamlit as st
+import joblib
 import numpy as np
 from utils import extract_aac_features
-from tensorflow.keras.models import load_model
-import joblib
 
-# 假模型取代 SVM
-class DummyModel:
-    def predict(self, X):
-        return [0]
-
-class DummyLabelEncoder:
-    def inverse_transform(self, labels):
-        return ["ABC Transporter"]
+# 載入模型與 LabelEncoder
+model = joblib.load("svm_model_AAC.pkl")
+label_encoder = joblib.load("label_encoder_AAC.pkl")
 
 st.title("Efflux Protein Family Predictor 🧬")
-st.markdown("請貼上蛋白質序列（FASTA 格式），並選擇預測模型。")
+st.markdown("輸入蛋白質序列（單條，FASTA 格式）進行家族分類預測。")
 
-model_option = st.selectbox("請選擇預測模型", ["SVM (AAC)", "CNN (AAC)"])
 fasta_input = st.text_area("請貼上蛋白質序列（FASTA 格式）")
 
 if st.button("開始預測"):
     if not fasta_input.strip():
         st.warning("請輸入蛋白質序列")
     else:
+        # 擷取序列（忽略 > 標頭）
         lines = fasta_input.strip().split('\n')
         sequence = ''.join([line.strip() for line in lines if not line.startswith(">")])
 
         if not sequence.isalpha():
             st.error("序列中包含非字母字符，請確認格式正確")
         else:
-            features = extract_aac_features(sequence).reshape(1, -1)
+            # 特徵萃取
+            features = extract_aac_features(sequence)
 
-            if model_option == "SVM (AAC)":
-                model = DummyModel()
-                encoder = DummyLabelEncoder()
-                pred = model.predict(features)[0]
-                result = encoder.inverse_transform([pred])[0]
-                st.success(f"✅ 模擬預測家族（SVM）：**{result}**")
+            # 預測
+            prediction = model.predict([features])[0]
+            decoded = label_encoder.inverse_transform([prediction])[0]
 
-            elif model_option == "CNN (AAC)":
-                try:
-                    model = load_model("family_predictor_cnn.h5")
-                    encoder = joblib.load("family_label_encoder.pkl")
-                    features_cnn = features.reshape(1, 20, 1)
-                    pred = np.argmax(model.predict(features_cnn), axis=1)[0]
-                    result = encoder.inverse_transform([pred])[0]
-                    st.success(f"✅ 預測家族（CNN）：**{result}**")
-                except Exception as e:
-                    st.error(f"❌ 載入 CNN 模型或 LabelEncoder 時發生錯誤：{e}")
+            st.success(f"✅ 預測家族：**{decoded}**")
